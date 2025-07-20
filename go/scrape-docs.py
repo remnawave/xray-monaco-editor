@@ -172,12 +172,14 @@ def parse_type(input: str) -> dict:
     if input.startswith("string, any of"):
         return {"type": "string"}
 
-    # Вот тут я не уверен
     if input == "object":
         return {}
 
     if input == "float number":
         return {"type": "number"}
+
+    if input == "{}":
+        return {"type": "object"}
 
     raise Exception(input)
 

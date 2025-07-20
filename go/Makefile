@@ -40,7 +40,7 @@ assets/Xray-docs-next-main:
 	cd assets && curl -fL https://github.com/XTLS/Xray-docs-next/archive/refs/heads/main.tar.gz | tar xvzf -
 
 xray.schema.json: assets/Xray-docs-next-main
-	grep -r '' assets/Xray-docs-next-main/docs/ru/config/ \
+	grep -rI '' assets/Xray-docs-next-main/docs/ru/config/ \
 		| cut -d: -f2- \
 		| PYTHONUNBUFFERED=1 \
 		python3 scrape-docs.py "Основные модули конфигурации" \

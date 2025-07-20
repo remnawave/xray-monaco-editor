@@ -127,6 +127,12 @@ def parse_type(input: str) -> dict:
     if input.startswith("\\[") and input.endswith("\\]"):
         return {"type": "array", "items": parse_type(input[2:-2])}
 
+    # Add handling for incomplete escaped arrays
+    if input.startswith("\\[") and input.endswith("\\"):
+        # Extract the type between \[ and \
+        inner_type = input[2:-1]
+        return {"type": "array", "items": parse_type(inner_type)}
+
     if input.startswith("[") and input.endswith("]"):
         return {"type": "array", "items": parse_type(input[1:-1])}
 

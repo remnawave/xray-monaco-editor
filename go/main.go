@@ -197,6 +197,20 @@ func removeExtDatRules(obj interface{}) {
 							}
 							r["domain"] = filteredDomains
 						}
+						if ips, ok := r["ip"].([]interface{}); ok {
+							fmt.Printf("Found nested ip rules with %d elements\n", len(ips))
+							filteredIps := make([]interface{}, 0)
+							for _, ip := range ips {
+								if ipStr, ok := ip.(string); ok {
+									if strings.Contains(ipStr, "ext:") && strings.Contains(ipStr, ".dat") {
+										fmt.Printf("Removing nested ip rule: %s\n", ipStr)
+										continue
+									}
+									filteredIps = append(filteredIps, ip)
+								}
+							}
+							r["ip"] = filteredIps
+						}
 						filteredRules = append(filteredRules, r)
 					default:
 						filteredRules = append(filteredRules, rule)

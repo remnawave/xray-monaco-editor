@@ -2,7 +2,7 @@
 *.js
 assets
 *.schema.json
-
+*.schema.cn.json
 
 # Logs
 logs
@@ -28,3 +28,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+

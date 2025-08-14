@@ -1,6 +1,6 @@
-build: main.wasm wasm_exec.js xray.schema.json
+build: main.wasm wasm_exec.js xray.schema.json xray.schema.cn.json
 	mkdir -p ../public
-	mv main.wasm wasm_exec.js xray.schema.json ../public/
+	mv main.wasm wasm_exec.js xray.schema.json xray.schema.cn.json ../public/
 .PHONY: build
 
 dev-lite:
@@ -45,3 +45,11 @@ xray.schema.json: assets/Xray-docs-next-main
 		| PYTHONUNBUFFERED=1 \
 		python3 scrape-docs.py "Основные модули конфигурации" \
 		> xray.schema.json
+
+
+xray.schema.cn.json:
+	grep -rI '' assets/Xray-docs-next-main/docs/config/ \
+		| cut -d: -f2- \
+		| PYTHONUNBUFFERED=1 \
+		python3 scrape-docs.py "基础配置模块" \
+		> xray.schema.cn.json

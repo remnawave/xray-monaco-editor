@@ -187,6 +187,9 @@ def parse_type(input: str) -> dict:
     if input == "{}":
         return {"type": "object"}
 
+    if input == "struct":
+        return {"type": "object"}
+
     raise Exception(input)
 
 

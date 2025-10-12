@@ -20,6 +20,45 @@ index c17bfcd1..48370095 100644
  package dispatcher
  
  import (
+diff --git a/app/dispatcher/dispatcher_wasm.go b/app/dispatcher/dispatcher_wasm.go
+new file mode 100644
+index 00000000..2a6839ed
+--- /dev/null
++++ b/app/dispatcher/dispatcher_wasm.go
+@@ -0,0 +1,33 @@
++//go:build wasm
++// +build wasm
++
++package dispatcher
++
++import (
++	"context"
++
++	"github.com/xtls/xray-core/common"
++	"github.com/xtls/xray-core/features/routing"
++	"github.com/xtls/xray-core/transport"
++)
++
++// DefaultDispatcher is a stub for WASM builds
++type DefaultDispatcher struct {
++	routing.Dispatcher
++}
++
++// WrapLink is a stub method for WASM builds
++func (d *DefaultDispatcher) WrapLink(ctx context.Context, link *transport.Link) *transport.Link {
++	return link
++}
++
++// New creates a new DefaultDispatcher instance for WASM
++func New(ctx context.Context, config *Config) (*DefaultDispatcher, error) {
++	return &DefaultDispatcher{}, nil
++}
++
++func init() {
++	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
++		return New(ctx, config.(*Config))
++	}))
++}
 diff --git a/app/dispatcher/fakednssniffer.go b/app/dispatcher/fakednssniffer.go
 index bed90877..78b44066 100644
 --- a/app/dispatcher/fakednssniffer.go
@@ -97,6 +136,30 @@ index a86f0921..8169e6d8 100644
  package command
  
  import (
+diff --git a/app/proxyman/handler_wasm.go b/app/proxyman/handler_wasm.go
+new file mode 100644
+index 00000000..fc5dd195
+--- /dev/null
++++ b/app/proxyman/handler_wasm.go
+@@ -0,0 +1,18 @@
++//go:build wasm
++// +build wasm
++
++package proxyman
++
++import (
++	"context"
++
++	"github.com/xtls/xray-core/transport"
++)
++
++// Handler is a stub for WASM builds
++type Handler struct{}
++
++// Process is a stub method for WASM builds
++func (h *Handler) Process(ctx context.Context, link *transport.Link, handler interface{}) error {
++	return nil
++}
 diff --git a/app/proxyman/inbound/always.go b/app/proxyman/inbound/always.go
 index f6a769fb..29b59ba5 100644
 --- a/app/proxyman/inbound/always.go
@@ -163,6 +226,40 @@ index 244fcffe..4528e294 100644
  package outbound
  
  import (
+diff --git a/app/proxyman/outbound/outbound_wasm.go b/app/proxyman/outbound/outbound_wasm.go
+new file mode 100644
+index 00000000..1bbf263b
+--- /dev/null
++++ b/app/proxyman/outbound/outbound_wasm.go
+@@ -0,0 +1,28 @@
++//go:build wasm
++// +build wasm
++
++package outbound
++
++import (
++	"context"
++
++	"github.com/xtls/xray-core/app/proxyman"
++	"github.com/xtls/xray-core/common"
++)
++
++// Manager is a stub for WASM builds
++type Manager struct{}
++
++// Handler is a stub for WASM builds
++type Handler struct{}
++
++// New creates a new Manager instance for WASM
++func New(ctx context.Context, config *proxyman.OutboundConfig) (*Manager, error) {
++	return &Manager{}, nil
++}
++
++func init() {
++	common.Must(common.RegisterConfig((*proxyman.OutboundConfig)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
++		return New(ctx, config.(*proxyman.OutboundConfig))
++	}))
++}
 diff --git a/app/proxyman/outbound/uot.go b/app/proxyman/outbound/uot.go
 index 659f65a1..92af387a 100644
 --- a/app/proxyman/outbound/uot.go
@@ -436,6 +533,27 @@ index dd2e4259..9e18e8f6 100644
  package shadowsocks_2022
  
  import (
+diff --git a/proxy/vless/outbound/outbound.go b/proxy/vless/outbound/outbound.go
+index 30b9dcf9..ad714f78 100644
+--- a/proxy/vless/outbound/outbound.go
++++ b/proxy/vless/outbound/outbound.go
+@@ -11,7 +11,6 @@ import (
+ 	"unsafe"
+ 
+ 	utls "github.com/refraction-networking/utls"
+-	proxyman "github.com/xtls/xray-core/app/proxyman/outbound"
+ 	"github.com/xtls/xray-core/app/reverse"
+ 	"github.com/xtls/xray-core/common"
+ 	"github.com/xtls/xray-core/common/buf"
+@@ -409,7 +408,7 @@ func (r *Reverse) monitor() error {
+ 			ctx := session.ContextWithOutbounds(r.ctx, []*session.Outbound{{
+ 				Target: net.Destination{Address: net.DomainAddress("v1.rvs.cool")},
+ 			}})
+-			r.handler.Process(ctx, link2, session.HandlerFromContext(ctx).(*proxyman.Handler))
++			r.handler.Process(ctx, link2, nil)
+ 			common.Interrupt(reader1)
+ 			common.Interrupt(reader2)
+ 		}()
 diff --git a/transport/internet/filelocker_other.go b/transport/internet/filelocker_other.go
 index 36d937c1..2ee03fc6 100644
 --- a/transport/internet/filelocker_other.go

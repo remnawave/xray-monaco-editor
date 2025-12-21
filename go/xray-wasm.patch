@@ -526,7 +526,15 @@ diff --git a/proxy/vless/outbound/outbound.go b/proxy/vless/outbound/outbound.go
 index 30b9dcf9..ad714f78 100644
 --- a/proxy/vless/outbound/outbound.go
 +++ b/proxy/vless/outbound/outbound.go
-@@ -421,7 +421,7 @@ func (r *Reverse) monitor() error {
+@@ -14,7 +14,6 @@ import (
+ 	"unsafe"
+ 
+ 	utls "github.com/refraction-networking/utls"
+-	proxyman "github.com/xtls/xray-core/app/proxyman/outbound"
+ 	"github.com/xtls/xray-core/app/reverse"
+ 	"github.com/xtls/xray-core/common"
+ 	"github.com/xtls/xray-core/common/buf"
+@@ -421,7 +420,7 @@ func (r *Reverse) monitor() error {
  		go func() {
  			ctx := session.ContextWithOutbounds(r.ctx, []*session.Outbound{{
  				Target: net.Destination{Address: net.DomainAddress("v1.rvs.cool")},

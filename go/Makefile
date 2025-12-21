@@ -21,11 +21,11 @@ assets/xray-patched: xray-version.txt
 
 assets/geoip.dat:
 	mkdir -p assets
-	cd assets && wget https://github.com/v2fly/geoip/releases/latest/download/geoip.dat
+	cd assets && wget https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat
 
 assets/geosite.dat:
 	mkdir -p assets
-	cd assets && wget https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat -O geosite.dat
+	cd assets && wget https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
 
 wasm_exec.js:
 	mkdir -p .wasm

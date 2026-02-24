@@ -172,7 +172,7 @@ def parse_type(input: str) -> dict:
     if input.startswith("a list of"):
         return {}
 
-    if input == "string array" or input == "array":
+    if input == "string array" or input == "array" or input == "list":
         return {"type": "array", "items": {"type": "string"}}
 
     if input.startswith("string, any of"):
@@ -190,7 +190,19 @@ def parse_type(input: str) -> dict:
     if input == "struct":
         return {"type": "object"}
 
-    raise Exception(input)
+    # Handle inline object types like {"port": string, "interval": number}
+    if input.startswith("{") and input.endswith("}"):
+        return {"type": "object"}
+
+    # Handle empty or whitespace-only input
+    if not input.strip():
+        return {}
+
+    # Handle "null" type
+    if input == "null":
+        return {"type": "null"}
+
+    raise Exception(f"Unknown type: '{input}'")
 
 
 def main():

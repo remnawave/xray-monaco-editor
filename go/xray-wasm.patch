@@ -25,7 +25,7 @@ new file mode 100644
 index 00000000..2a6839ed
 --- /dev/null
 +++ b/app/dispatcher/dispatcher_wasm.go
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,35 @@
 +//go:build wasm
 +// +build wasm
 +
@@ -35,7 +35,9 @@ index 00000000..2a6839ed
 +	"context"
 +
 +	"github.com/xtls/xray-core/common"
++	"github.com/xtls/xray-core/features/policy"
 +	"github.com/xtls/xray-core/features/routing"
++	"github.com/xtls/xray-core/features/stats"
 +	"github.com/xtls/xray-core/transport"
 +)
 +
@@ -44,8 +46,8 @@ index 00000000..2a6839ed
 +	routing.Dispatcher
 +}
 +
-+// WrapLink is a stub method for WASM builds
-+func (d *DefaultDispatcher) WrapLink(ctx context.Context, link *transport.Link) *transport.Link {
++// WrapLink is a stub function for WASM builds (package-level function)
++func WrapLink(ctx context.Context, policyManager policy.Manager, statsManager stats.Manager, link *transport.Link) *transport.Link {
 +	return link
 +}
 +
@@ -328,16 +330,16 @@ index f12040a6..c408bcf4 100644
  func cipherFromString(c string) shadowsocks.CipherType {
  	switch strings.ToLower(c) {
  	case "aes-128-gcm", "aead_aes_128_gcm":
-@@ -50,7 +55,7 @@ type ShadowsocksServerConfig struct {
- }
- 
+@@ -51,7 +56,7 @@ type ShadowsocksServerConfig struct {
  func (v *ShadowsocksServerConfig) Build() (proto.Message, error) {
+ 	errors.PrintNonRemovalDeprecatedFeatureWarning("Shadowsocks (with no Forward Secrecy, etc.)", "VLESS Encryption")
+ 
 -	if C.Contains(shadowaead_2022.List, v.Cipher) {
 +	if C.Contains(aeadList, v.Cipher) {
  		return buildShadowsocks2022(v)
  	}
  
-@@ -196,7 +201,7 @@ func (v *ShadowsocksClientConfig) Build() (proto.Message, error) {
+@@ -204,7 +209,7 @@ func (v *ShadowsocksClientConfig) Build() (proto.Message, error) {
  
  	if len(v.Servers) == 1 {
  		server := v.Servers[0]
@@ -346,7 +348,7 @@ index f12040a6..c408bcf4 100644
  			if server.Address == nil {
  				return nil, errors.New("Shadowsocks server address is not set.")
  			}
-@@ -219,7 +224,7 @@ func (v *ShadowsocksClientConfig) Build() (proto.Message, error) {
+@@ -228,7 +233,7 @@ func (v *ShadowsocksClientConfig) Build() (proto.Message, error) {
  
  	config := new(shadowsocks.ClientConfig)
  	for _, server := range v.Servers {
@@ -359,17 +361,17 @@ diff --git a/infra/conf/transport_internet.go b/infra/conf/transport_internet.go
 index 4a12761d..3c56fabe 100644
 --- a/infra/conf/transport_internet.go
 +++ b/infra/conf/transport_internet.go
-@@ -9,8 +9,8 @@ import (
+@@ -10,8 +10,8 @@ import (
  	"runtime"
  	"strconv"
  	"strings"
 -	"syscall"
- 
+ 	"time"
 +	"github.com/xtls/xray-core/common"
+ 
  	"github.com/xtls/xray-core/common/errors"
  	"github.com/xtls/xray-core/common/net"
- 	"github.com/xtls/xray-core/common/platform/filesystem"
-@@ -437,13 +437,13 @@ func (c *TLSConfig) Build() (proto.Message, error) {
+@@ -726,13 +726,13 @@ func (c *TLSConfig) Build() (proto.Message, error) {
  	if c.ALPN != nil && len(*c.ALPN) > 0 {
  		config.NextProtocol = []string(*c.ALPN)
  	}
@@ -390,7 +392,7 @@ index 4a12761d..3c56fabe 100644
  	if c.CurvePreferences != nil && len(*c.CurvePreferences) > 0 {
  		config.CurvePreferences = []string(*c.CurvePreferences)
  	}
-@@ -567,7 +567,7 @@ func (c *REALITYConfig) Build() (proto.Message, error) {
+@@ -866,7 +866,7 @@ func (c *REALITYConfig) Build() (proto.Message, error) {
  			case '@', '/':
  				c.Type = "unix"
  				if s[0] == '@' && len(s) > 1 && s[1] == '@' && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
@@ -534,7 +536,7 @@ index 30b9dcf9..ad714f78 100644
  	"github.com/xtls/xray-core/app/reverse"
  	"github.com/xtls/xray-core/common"
  	"github.com/xtls/xray-core/common/buf"
-@@ -421,7 +420,7 @@ func (r *Reverse) monitor() error {
+@@ -460,7 +459,7 @@ func (r *Reverse) monitor() error {
  		go func() {
  			ctx := session.ContextWithOutbounds(r.ctx, []*session.Outbound{{
  				Target: net.Destination{Address: net.DomainAddress("v1.rvs.cool")},

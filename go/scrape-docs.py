@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 
 from typing import Iterator, TypedDict
@@ -31,6 +32,7 @@ KNOWN_BAD_RESOLVES = (
     "XHTTP: Beyond REALITY",
     "CostObject",
     "SockoptObject",
+    "quicParamsObject",
 )
 USED_OBJECTS = set()
 
@@ -201,6 +203,10 @@ def parse_type(input: str) -> dict:
     # Handle "null" type
     if input == "null":
         return {"type": "null"}
+
+    # Handle dash-separated identifier values (e.g. "header-custom", "mkcp-original")
+    if re.match(r'^[a-zA-Z0-9][-a-zA-Z0-9]*$', input):
+        return {"const": input}
 
     raise Exception(f"Unknown type: '{input}'")
 

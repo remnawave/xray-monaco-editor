@@ -10,7 +10,7 @@ index 9ea71e6e..4cf89044 100644
  
  import (
 diff --git a/app/dispatcher/default.go b/app/dispatcher/default.go
-index c17bfcd1..48370095 100644
+index e6f89657..c36b3961 100644
 --- a/app/dispatcher/default.go
 +++ b/app/dispatcher/default.go
 @@ -1,3 +1,6 @@
@@ -22,7 +22,7 @@ index c17bfcd1..48370095 100644
  import (
 diff --git a/app/dispatcher/dispatcher_wasm.go b/app/dispatcher/dispatcher_wasm.go
 new file mode 100644
-index 00000000..2a6839ed
+index 00000000..747b582b
 --- /dev/null
 +++ b/app/dispatcher/dispatcher_wasm.go
 @@ -0,0 +1,35 @@
@@ -117,7 +117,7 @@ index f9bb58e3..965bb2b5 100644
  
  import (
 diff --git a/app/observatory/observer.go b/app/observatory/observer.go
-index a6fba3ad..a302c0e0 100644
+index c0b38b6e..536d219d 100644
 --- a/app/observatory/observer.go
 +++ b/app/observatory/observer.go
 @@ -1,3 +1,6 @@
@@ -163,7 +163,7 @@ index 00000000..fc5dd195
 +	return nil
 +}
 diff --git a/app/proxyman/inbound/always.go b/app/proxyman/inbound/always.go
-index f6a769fb..29b59ba5 100644
+index a1cb7b7c..59ea670e 100644
 --- a/app/proxyman/inbound/always.go
 +++ b/app/proxyman/inbound/always.go
 @@ -1,3 +1,6 @@
@@ -174,7 +174,7 @@ index f6a769fb..29b59ba5 100644
  
  import (
 diff --git a/app/proxyman/inbound/inbound.go b/app/proxyman/inbound/inbound.go
-index 8e484965..4c4823e7 100644
+index 374a0428..8a4355a9 100644
 --- a/app/proxyman/inbound/inbound.go
 +++ b/app/proxyman/inbound/inbound.go
 @@ -1,3 +1,6 @@
@@ -185,7 +185,7 @@ index 8e484965..4c4823e7 100644
  
  import (
 diff --git a/app/proxyman/inbound/worker.go b/app/proxyman/inbound/worker.go
-index 42b5c3e9..a9a11847 100644
+index be671b02..f0b06e84 100644
 --- a/app/proxyman/inbound/worker.go
 +++ b/app/proxyman/inbound/worker.go
 @@ -1,3 +1,6 @@
@@ -196,7 +196,7 @@ index 42b5c3e9..a9a11847 100644
  
  import (
 diff --git a/app/proxyman/outbound/handler.go b/app/proxyman/outbound/handler.go
-index 361c88ad..d7ee8f29 100644
+index 62902c60..9c611103 100644
 --- a/app/proxyman/outbound/handler.go
 +++ b/app/proxyman/outbound/handler.go
 @@ -1,3 +1,6 @@
@@ -262,8 +262,33 @@ index 659f65a1..92af387a 100644
  package outbound
  
  import (
+diff --git a/app/router/webhook.go b/app/router/webhook.go
+index 32ae2887..02cb18d8 100644
+--- a/app/router/webhook.go
++++ b/app/router/webhook.go
+@@ -11,9 +11,10 @@ import (
+ 	"runtime"
+ 	"strings"
+ 	"sync"
+-	"syscall"
++
+ 	"time"
+ 
++	"github.com/xtls/xray-core/common"
+ 	"github.com/xtls/xray-core/common/errors"
+ 	"github.com/xtls/xray-core/features/routing"
+ 	routing_session "github.com/xtls/xray-core/features/routing/session"
+@@ -55,7 +56,7 @@ func resolveSocketPath(path string) string {
+ 		return path
+ 	}
+ 	if len(path) > 1 && path[1] == '@' {
+-		fullAddr := make([]byte, len(syscall.RawSockaddrUnix{}.Path))
++		fullAddr := make([]byte, common.RawSockAddrUnixLen)
+ 		copy(fullAddr, path[1:])
+ 		return string(fullAddr)
+ 	}
 diff --git a/app/stats/command/command.go b/app/stats/command/command.go
-index db5283c8..f6b402ac 100644
+index 079df1ec..b82abec8 100644
 --- a/app/stats/command/command.go
 +++ b/app/stats/command/command.go
 @@ -1,3 +1,6 @@
@@ -273,24 +298,6 @@ index db5283c8..f6b402ac 100644
  package command
  
  import (
-diff --git a/common/buf/readv_reader_wasm.go b/common/buf/readv_reader_wasm.go
-index 30b52e74..03545111 100644
---- a/common/buf/readv_reader_wasm.go
-+++ b/common/buf/readv_reader_wasm.go
-@@ -6,10 +6,12 @@ package buf
- import (
- 	"io"
- 	"syscall"
-+
-+	"github.com/xtls/xray-core/features/stats"
- )
- 
- const useReadv = false
- 
--func NewReadVReader(reader io.Reader, rawConn syscall.RawConn) Reader {
-+func NewReadVReader(reader io.Reader, rawConn syscall.RawConn, counter stats.Counter) Reader {
- 	panic("not implemented")
- }
 diff --git a/common/common.go b/common/common.go
 index f0134243..6828e457 100644
 --- a/common/common.go
@@ -306,7 +313,7 @@ index f0134243..6828e457 100644
  func CloseIfExists(obj any) error {
  	if obj != nil {
 diff --git a/infra/conf/shadowsocks.go b/infra/conf/shadowsocks.go
-index f12040a6..c408bcf4 100644
+index 490c2997..53eabd57 100644
 --- a/infra/conf/shadowsocks.go
 +++ b/infra/conf/shadowsocks.go
 @@ -3,7 +3,6 @@ package conf
@@ -358,10 +365,10 @@ index f12040a6..c408bcf4 100644
  		}
  		if server.Address == nil {
 diff --git a/infra/conf/transport_internet.go b/infra/conf/transport_internet.go
-index 4a12761d..3c56fabe 100644
+index 849f0e38..e555fd41 100644
 --- a/infra/conf/transport_internet.go
 +++ b/infra/conf/transport_internet.go
-@@ -10,8 +10,8 @@ import (
+@@ -11,8 +11,8 @@ import (
  	"runtime"
  	"strconv"
  	"strings"
@@ -371,7 +378,7 @@ index 4a12761d..3c56fabe 100644
  
  	"github.com/xtls/xray-core/common/errors"
  	"github.com/xtls/xray-core/common/net"
-@@ -726,13 +726,13 @@ func (c *TLSConfig) Build() (proto.Message, error) {
+@@ -684,13 +684,13 @@ func (c *TLSConfig) Build() (proto.Message, error) {
  	if c.ALPN != nil && len(*c.ALPN) > 0 {
  		config.NextProtocol = []string(*c.ALPN)
  	}
@@ -392,7 +399,7 @@ index 4a12761d..3c56fabe 100644
  	if c.CurvePreferences != nil && len(*c.CurvePreferences) > 0 {
  		config.CurvePreferences = []string(*c.CurvePreferences)
  	}
-@@ -866,7 +866,7 @@ func (c *REALITYConfig) Build() (proto.Message, error) {
+@@ -825,7 +825,7 @@ func (c *REALITYConfig) Build() (proto.Message, error) {
  			case '@', '/':
  				c.Type = "unix"
  				if s[0] == '@' && len(s) > 1 && s[1] == '@' && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
@@ -402,7 +409,7 @@ index 4a12761d..3c56fabe 100644
  					s = string(fullAddr)
  				}
 diff --git a/infra/conf/trojan.go b/infra/conf/trojan.go
-index 4a230514..a08a14f4 100644
+index b78b6ffc..55e75e43 100644
 --- a/infra/conf/trojan.go
 +++ b/infra/conf/trojan.go
 @@ -6,8 +6,8 @@ import (
@@ -415,7 +422,7 @@ index 4a230514..a08a14f4 100644
  	"github.com/xtls/xray-core/common/errors"
  	"github.com/xtls/xray-core/common/net"
  	"github.com/xtls/xray-core/common/protocol"
-@@ -149,7 +149,7 @@ func (c *TrojanServerConfig) Build() (proto.Message, error) {
+@@ -169,7 +169,7 @@ func (c *TrojanServerConfig) Build() (proto.Message, error) {
  			} else if filepath.IsAbs(fb.Dest) || fb.Dest[0] == '@' {
  				fb.Type = "unix"
  				if strings.HasPrefix(fb.Dest, "@@") && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
@@ -425,7 +432,7 @@ index 4a230514..a08a14f4 100644
  					fb.Dest = string(fullAddr)
  				}
 diff --git a/infra/conf/vless.go b/infra/conf/vless.go
-index aa410e5c..142736f2 100644
+index 1e14882c..77d900ad 100644
 --- a/infra/conf/vless.go
 +++ b/infra/conf/vless.go
 @@ -7,8 +7,8 @@ import (
@@ -438,7 +445,7 @@ index aa410e5c..142736f2 100644
  	"github.com/xtls/xray-core/common/errors"
  	"github.com/xtls/xray-core/common/net"
  	"github.com/xtls/xray-core/common/protocol"
-@@ -172,7 +172,7 @@ func (c *VLessInboundConfig) Build() (proto.Message, error) {
+@@ -178,7 +178,7 @@ func (c *VLessInboundConfig) Build() (proto.Message, error) {
  			} else if filepath.IsAbs(fb.Dest) || fb.Dest[0] == '@' {
  				fb.Type = "unix"
  				if strings.HasPrefix(fb.Dest, "@@") && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
@@ -448,7 +455,7 @@ index aa410e5c..142736f2 100644
  					fb.Dest = string(fullAddr)
  				}
 diff --git a/proxy/shadowsocks/client.go b/proxy/shadowsocks/client.go
-index c2ad1c1c..71ef74a6 100644
+index 29cb0456..1d6f658a 100644
 --- a/proxy/shadowsocks/client.go
 +++ b/proxy/shadowsocks/client.go
 @@ -1,3 +1,6 @@
@@ -459,7 +466,7 @@ index c2ad1c1c..71ef74a6 100644
  
  import (
 diff --git a/proxy/shadowsocks/protocol.go b/proxy/shadowsocks/protocol.go
-index c992f619..40aa976e 100644
+index 88006cde..241f5969 100644
 --- a/proxy/shadowsocks/protocol.go
 +++ b/proxy/shadowsocks/protocol.go
 @@ -1,3 +1,6 @@
@@ -525,10 +532,10 @@ index dd2e4259..9e18e8f6 100644
  
  import (
 diff --git a/proxy/vless/outbound/outbound.go b/proxy/vless/outbound/outbound.go
-index 30b9dcf9..ad714f78 100644
+index 75e74fe0..ab6930cc 100644
 --- a/proxy/vless/outbound/outbound.go
 +++ b/proxy/vless/outbound/outbound.go
-@@ -14,7 +14,6 @@ import (
+@@ -12,7 +12,6 @@ import (
  	"unsafe"
  
  	utls "github.com/refraction-networking/utls"
@@ -536,8 +543,7 @@ index 30b9dcf9..ad714f78 100644
  	"github.com/xtls/xray-core/app/reverse"
  	"github.com/xtls/xray-core/common"
  	"github.com/xtls/xray-core/common/buf"
-@@ -460,7 +459,7 @@ func (r *Reverse) monitor() error {
- 		go func() {
+@@ -472,7 +471,7 @@ func (r *Reverse) monitor() error {
  			ctx := session.ContextWithOutbounds(r.ctx, []*session.Outbound{{
  				Target: net.Destination{Address: net.DomainAddress("v1.rvs.cool")},
  			}})
@@ -547,7 +553,7 @@ index 30b9dcf9..ad714f78 100644
  			common.Interrupt(reader2)
  		}()
 diff --git a/transport/internet/filelocker_other.go b/transport/internet/filelocker_other.go
-index 36d937c1..2ee03fc6 100644
+index 36d937c1..7e2dea20 100644
 --- a/transport/internet/filelocker_other.go
 +++ b/transport/internet/filelocker_other.go
 @@ -1,5 +1,5 @@
@@ -579,7 +585,7 @@ index 00000000..152df97f
 +	panic("unimplemented")
 +}
 diff --git a/transport/internet/grpc/dial.go b/transport/internet/grpc/dial.go
-index b8740dae..42f9562a 100644
+index c8b8423c..42a71609 100644
 --- a/transport/internet/grpc/dial.go
 +++ b/transport/internet/grpc/dial.go
 @@ -1,3 +1,6 @@
@@ -590,7 +596,7 @@ index b8740dae..42f9562a 100644
  
  import (
 diff --git a/transport/internet/grpc/hub.go b/transport/internet/grpc/hub.go
-index ae8788fa..48c30f88 100644
+index 34f8f1c0..bef4047d 100644
 --- a/transport/internet/grpc/hub.go
 +++ b/transport/internet/grpc/hub.go
 @@ -1,3 +1,6 @@
@@ -601,7 +607,7 @@ index ae8788fa..48c30f88 100644
  
  import (
 diff --git a/transport/internet/httpupgrade/dialer.go b/transport/internet/httpupgrade/dialer.go
-index c10bd97e..cbda04dd 100644
+index 571797f6..62b18c25 100644
 --- a/transport/internet/httpupgrade/dialer.go
 +++ b/transport/internet/httpupgrade/dialer.go
 @@ -1,3 +1,6 @@
@@ -612,7 +618,7 @@ index c10bd97e..cbda04dd 100644
  
  import (
 diff --git a/transport/internet/httpupgrade/hub.go b/transport/internet/httpupgrade/hub.go
-index dc67c747..6ce0a248 100644
+index 8e70ad08..3dfca6ed 100644
 --- a/transport/internet/httpupgrade/hub.go
 +++ b/transport/internet/httpupgrade/hub.go
 @@ -1,3 +1,6 @@
@@ -623,7 +629,7 @@ index dc67c747..6ce0a248 100644
  
  import (
 diff --git a/transport/internet/kcp/dialer.go b/transport/internet/kcp/dialer.go
-index 0a3968dc..010c6a00 100644
+index 310bbd53..807a9429 100644
 --- a/transport/internet/kcp/dialer.go
 +++ b/transport/internet/kcp/dialer.go
 @@ -1,3 +1,6 @@
@@ -634,7 +640,7 @@ index 0a3968dc..010c6a00 100644
  
  import (
 diff --git a/transport/internet/kcp/listener.go b/transport/internet/kcp/listener.go
-index 71ce6462..60e98c91 100644
+index aabec65f..3f573c91 100644
 --- a/transport/internet/kcp/listener.go
 +++ b/transport/internet/kcp/listener.go
 @@ -1,3 +1,6 @@
@@ -645,7 +651,7 @@ index 71ce6462..60e98c91 100644
  
  import (
 diff --git a/transport/internet/splithttp/dialer.go b/transport/internet/splithttp/dialer.go
-index 3f6e9ea3..d8db0226 100644
+index 0c351a5a..aba044c1 100644
 --- a/transport/internet/splithttp/dialer.go
 +++ b/transport/internet/splithttp/dialer.go
 @@ -1,3 +1,6 @@
@@ -656,7 +662,7 @@ index 3f6e9ea3..d8db0226 100644
  
  import (
 diff --git a/transport/internet/splithttp/hub.go b/transport/internet/splithttp/hub.go
-index d161741a..3667b64d 100644
+index 1ffdf6f2..d5ae68b7 100644
 --- a/transport/internet/splithttp/hub.go
 +++ b/transport/internet/splithttp/hub.go
 @@ -1,3 +1,6 @@
@@ -667,10 +673,10 @@ index d161741a..3667b64d 100644
  
  import (
 diff --git a/transport/internet/system_listener.go b/transport/internet/system_listener.go
-index 0cb6cd06..a3539d81 100644
+index 2ac28eda..a16c1a32 100644
 --- a/transport/internet/system_listener.go
 +++ b/transport/internet/system_listener.go
-@@ -14,6 +14,7 @@ import (
+@@ -13,6 +13,7 @@ import (
  	"github.com/sagernet/sing/common/control"
  	"github.com/xtls/xray-core/common/errors"
  	"github.com/xtls/xray-core/common/net"
@@ -678,7 +684,7 @@ index 0cb6cd06..a3539d81 100644
  )
  
  var effectiveListener = DefaultListener{}
-@@ -121,8 +122,9 @@ func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *S
+@@ -120,8 +121,9 @@ func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *S
  		if (runtime.GOOS == "linux" || runtime.GOOS == "android") && address[0] == '@' {
  			// linux abstract unix domain socket is lockfree
  			if len(address) > 1 && address[1] == '@' {
@@ -690,7 +696,7 @@ index 0cb6cd06..a3539d81 100644
  				address = string(fullAddr)
  			}
 diff --git a/transport/internet/tcp/dialer.go b/transport/internet/tcp/dialer.go
-index 65bacf3a..82bbd615 100644
+index 92fa7557..c503bcf5 100644
 --- a/transport/internet/tcp/dialer.go
 +++ b/transport/internet/tcp/dialer.go
 @@ -1,3 +1,6 @@
@@ -701,7 +707,7 @@ index 65bacf3a..82bbd615 100644
  
  import (
 diff --git a/transport/internet/tcp/hub.go b/transport/internet/tcp/hub.go
-index 759dfc35..d109b315 100644
+index ede97499..0024eb64 100644
 --- a/transport/internet/tcp/hub.go
 +++ b/transport/internet/tcp/hub.go
 @@ -1,3 +1,6 @@
@@ -712,7 +718,7 @@ index 759dfc35..d109b315 100644
  
  import (
 diff --git a/transport/internet/udp/dialer.go b/transport/internet/udp/dialer.go
-index 27f1505a..99a9bce1 100644
+index c930c355..812124de 100644
 --- a/transport/internet/udp/dialer.go
 +++ b/transport/internet/udp/dialer.go
 @@ -1,3 +1,6 @@
@@ -723,7 +729,7 @@ index 27f1505a..99a9bce1 100644
  
  import (
 diff --git a/transport/internet/udp/hub.go b/transport/internet/udp/hub.go
-index 08354c43..b438bae2 100644
+index 5d29d203..b465f191 100644
 --- a/transport/internet/udp/hub.go
 +++ b/transport/internet/udp/hub.go
 @@ -1,3 +1,6 @@
@@ -734,7 +740,7 @@ index 08354c43..b438bae2 100644
  
  import (
 diff --git a/transport/internet/websocket/dialer.go b/transport/internet/websocket/dialer.go
-index 60330fd7..c6640133 100644
+index e5354908..bae83996 100644
 --- a/transport/internet/websocket/dialer.go
 +++ b/transport/internet/websocket/dialer.go
 @@ -1,3 +1,6 @@
@@ -745,7 +751,7 @@ index 60330fd7..c6640133 100644
  
  import (
 diff --git a/transport/internet/websocket/hub.go b/transport/internet/websocket/hub.go
-index feefe2af..740b2c47 100644
+index 73799174..0f6695c8 100644
 --- a/transport/internet/websocket/hub.go
 +++ b/transport/internet/websocket/hub.go
 @@ -1,3 +1,6 @@

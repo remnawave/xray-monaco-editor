@@ -5,7 +5,7 @@ Parse and validate xray's JSON configuration in your browser.
 The basic idea is: Many GUI clients do not provide good error messages if a
 JSON config fails to load. Users don't want to run the core directly to find
 the error message. Therefore, let's use a browser tool in the style of
-jsonlint.com.
+jsonlint.com. 
 
 [Try it out here](https://remnawave.github.io/xray-monaco-editor/)
 

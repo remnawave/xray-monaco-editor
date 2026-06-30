@@ -28,6 +28,7 @@ KNOWN_BAD_RESOLVES = (
     "noiseObject",
     "DnsServerObject",
     "xhttpSettings",
+    "XHTTPObject",
     "PingConfigObject",
     "XHTTP: Beyond REALITY",
     "CostObject",
@@ -99,12 +100,27 @@ def parse(stdin: Iterator[str]) -> Iterator[JsonschemaType]:
 
             name = name.strip(" `")
 
+            try:
+                type_info = parse_type(ty)
+            except Exception:
+                # Not an actual property definition but a descriptive bullet
+                # that happens to use the same "> `name`: text" syntax (e.g.
+                # finalmask's "> `dns`: подделка под ..." enum docs). Treat it
+                # as prose and fold it into the current description instead of
+                # crashing the whole build.
+                if current_obj["raw_properties"]:
+                    current_obj["raw_properties"][-1]["description"] += line
+                    current_obj["raw_properties"][-1]["markdownDescription"] += line
+                else:
+                    current_obj["description"] += line
+                continue
+
             current_obj["raw_properties"].append(
                 {
                     "name": name,
                     "description": "",
                     "markdownDescription": "",
-                    **parse_type(ty),
+                    **type_info,
                 }
             )
         elif current_obj:

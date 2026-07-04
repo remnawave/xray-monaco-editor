@@ -757,3 +757,27 @@ index 42dba88..3c12c76 100644
  package websocket
  
  import (
+diff --git a/common/platform/filesystem/file.go b/common/platform/filesystem/file.go
+index d9d1d39f..21ebb529 100644
+--- a/common/platform/filesystem/file.go
++++ b/common/platform/filesystem/file.go
+@@ -5,6 +5,7 @@ import (
+ 	"io"
+ 	"os"
+ 	"path/filepath"
++	"runtime"
+ 
+ 	"github.com/xtls/xray-core/common/buf"
+ 	"github.com/xtls/xray-core/common/platform"
+@@ -61,6 +62,11 @@ func getAssetFileLocation(file string) (string, os.FileInfo, error) {
+ 		return "", nil, err
+ 	}
+ 	path := platform.GetAssetLocation(local)
++	if runtime.GOOS == "js" {
++		// os.Stat is not implemented in the browser; assets are served
++		// from memory via the NewFileReader override in main.go
++		return path, nil, nil
++	}
+ 	info, err := os.Stat(path)
+ 	if err != nil {
+ 		return "", nil, err

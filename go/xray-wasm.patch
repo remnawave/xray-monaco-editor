@@ -351,19 +351,29 @@ index 2cfc095..fc96ab2 100644
  			return nil, errors.New("Shadowsocks 2022 accept no multi servers")
  		}
  		if server.Address == nil {
-diff --git a/infra/conf/transport_internet.go b/infra/conf/transport_internet.go
-index a6052ff..ab2f584 100644
---- a/infra/conf/transport_internet.go
-+++ b/infra/conf/transport_internet.go
-@@ -14,7 +14,6 @@ import (
+diff --git a/infra/conf/transport_security.go b/infra/conf/transport_security.go
+--- a/infra/conf/transport_security.go
++++ b/infra/conf/transport_security.go
+@@ -9,8 +9,8 @@ import (
  	"runtime"
  	"strconv"
  	"strings"
 -	"syscall"
- 
- 	"github.com/xtls/xray-core/common"
+
++	"github.com/xtls/xray-core/common"
  	"github.com/xtls/xray-core/common/errors"
-@@ -707,13 +706,13 @@ func (c *TLSConfig) Build() (proto.Message, error) {
+ 	"github.com/xtls/xray-core/common/net"
+ 	"github.com/xtls/xray-core/transport/internet/reality"
+@@ -72,7 +72,7 @@ func (c *REALITYConfig) Build() (proto.Message, error) {
+ 			case '@', '/':
+ 				c.Type = "unix"
+ 				if s[0] == '@' && len(s) > 1 && s[1] == '@' && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
+-					fullAddr := make([]byte, len(syscall.RawSockaddrUnix{}.Path)) // may need padding to work with haproxy
++					fullAddr := make([]byte, common.RawSockAddrUnixLen) // may need padding to work with haproxy
+ 					copy(fullAddr, s[1:])
+ 					s = string(fullAddr)
+ 				}
+@@ -336,13 +336,13 @@ func (c *TLSConfig) Build() (proto.Message, error) {
  	if c.ALPN != nil && len(*c.ALPN) > 0 {
  		config.NextProtocol = []string(*c.ALPN)
  	}
@@ -384,15 +394,6 @@ index a6052ff..ab2f584 100644
  	if c.CurvePreferences != nil && len(*c.CurvePreferences) > 0 {
  		config.CurvePreferences = []string(*c.CurvePreferences)
  	}
-@@ -832,7 +831,7 @@ func (c *REALITYConfig) Build() (proto.Message, error) {
- 			case '@', '/':
- 				c.Type = "unix"
- 				if s[0] == '@' && len(s) > 1 && s[1] == '@' && (runtime.GOOS == "linux" || runtime.GOOS == "android") {
--					fullAddr := make([]byte, len(syscall.RawSockaddrUnix{}.Path)) // may need padding to work with haproxy
-+					fullAddr := make([]byte, common.RawSockAddrUnixLen) // may need padding to work with haproxy
- 					copy(fullAddr, s[1:])
- 					s = string(fullAddr)
- 				}
 diff --git a/infra/conf/trojan.go b/infra/conf/trojan.go
 index 0848137..b302d1c 100644
 --- a/infra/conf/trojan.go

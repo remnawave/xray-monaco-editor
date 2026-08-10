@@ -53,6 +53,59 @@ PROPERTY_RENAMES = {
     "StreamSettingsObject": {"method": "network"},
 }
 
+ADMONITIONS = {
+    "tip": ("💡", "TIP"),
+    "info": ("ℹ️", "INFO"),
+    "note": ("📝", "NOTE"),
+    "warning": ("⚠️", "WARNING"),
+    "caution": ("⚠️", "CAUTION"),
+    "danger": ("⛔", "DANGER"),
+    "details": ("📖", "DETAILS"),
+}
+CONTAINER_RE = re.compile(r"^(:{3,})[ \t]*([a-zA-Z][a-zA-Z-]*)?[ \t]*(.*?)[ \t]*$")
+CODE_ANNOTATION_RE = re.compile(r"[ \t]*(//|#)?[ \t]*\[!code[^\]]*\][ \t]*$")
+TRAILING_FENCE_RE = re.compile(r"[ \t]+:{3,}[ \t]*$")
+
+
+def render_admonitions(text: str) -> str:
+    out: list[str] = []
+    stack: list[bool] = []
+
+    def prefix() -> str:
+        return "> " * sum(stack)
+
+    for line in text.split("\n"):
+        container = CONTAINER_RE.match(line)
+
+        if container and (container.group(2) or not container.group(3)):
+            kind, title = container.group(2), container.group(3)
+
+            if not kind:
+                if stack:
+                    quoted = stack.pop()
+                    if quoted:
+                        out.append(prefix().rstrip())
+                continue
+
+            admonition = ADMONITIONS.get(kind.lower())
+            if admonition is None:
+                stack.append(False)
+                continue
+
+            emoji, label = admonition
+            if out and out[-1].strip() not in ("", ">"):
+                out.append(prefix().rstrip())
+            stack.append(True)
+            out.append(f"{prefix()}{emoji} **{title or label}**")
+            out.append(prefix().rstrip())
+            continue
+
+        line = CODE_ANNOTATION_RE.sub("", line)
+        line = TRAILING_FENCE_RE.sub("", line)
+        out.append(f"{prefix()}{line}" if line else prefix().rstrip())
+
+    return "\n".join(out)
+
 
 def clean_prefix(line: str) -> bool:
     """
@@ -89,13 +142,22 @@ def starts_definition(hashes: str, title: str) -> bool:
 
 
 def finalize(current_obj: RawType) -> JsonschemaType:
-    description = current_obj["description"]
+    description = render_admonitions(current_obj["description"])
+
+    properties = {}
+    for prop in current_obj["raw_properties"]:
+        prop_description = render_admonitions(prop["description"])
+        properties[prop["name"]] = {
+            **prop,
+            "description": prop_description,
+            "markdownDescription": prop_description,
+        }
 
     return {
         "title": current_obj["title"],
         "description": description,
         "markdownDescription": description,
-        "properties": {x["name"]: x for x in current_obj["raw_properties"]},
+        "properties": properties,
         # turn off additionalProperties so that monaco will warn on
         # unknown properties. xray does allow for unknown
         # properties but most likely, setting them is a mistake. we

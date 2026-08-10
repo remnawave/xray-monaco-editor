@@ -37,6 +37,22 @@ KNOWN_BAD_RESOLVES = (
 )
 USED_OBJECTS = set()
 
+# A heading only starts a new definition if it is a top-level (`##`) section or
+# if its title looks like a type name. Upstream splits some objects into
+# descriptive `###` subsections (e.g. StreamSettingsObject into "Способы
+# передачи" / "传输方式" etc.), and those must keep filling the enclosing
+# object instead of stealing its properties into a definition nobody refs.
+TYPE_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.\-]*$")
+
+# Properties the docs renamed but that we want to keep documented under the old
+# name. Keyed by object title, so unrelated objects with a same-named property
+# (e.g. shadowsocks' `method`) are untouched.
+PROPERTY_RENAMES = {
+    # xray-core accepts both `method` and `network` (`method` wins when both are
+    # set), but every existing config uses `network`, so only offer that one.
+    "StreamSettingsObject": {"method": "network"},
+}
+
 
 def clean_prefix(line: str) -> bool:
     """
@@ -60,29 +76,52 @@ def clean_prefix(line: str) -> bool:
     return True
 
 
+def starts_definition(hashes: str, title: str) -> bool:
+    """
+    Whether a markdown heading introduces a new definition rather than a
+    subsection of the definition we are currently inside.
+
+    `##` always does — that is where objects, and the root definition itself,
+    live. Deeper headings only do when they name a type (`RuleObject`, `Peers`,
+    `header-custom`); anything prose-shaped belongs to its parent object.
+    """
+    return len(hashes) == 2 or bool(TYPE_NAME_RE.match(title))
+
+
+def finalize(current_obj: RawType) -> JsonschemaType:
+    description = current_obj["description"]
+
+    return {
+        "title": current_obj["title"],
+        "description": description,
+        "markdownDescription": description,
+        "properties": {x["name"]: x for x in current_obj["raw_properties"]},
+        # turn off additionalProperties so that monaco will warn on
+        # unknown properties. xray does allow for unknown
+        # properties but most likely, setting them is a mistake. we
+        # only do this if we have any props ourselves, otherwise
+        # there is no point.
+        "additionalProperties": not current_obj["raw_properties"],
+    }
+
+
 def parse(stdin: Iterator[str]) -> Iterator[JsonschemaType]:
     current_obj: RawType | None = None
 
     for line in stdin:
-        if line.startswith("##"):
-            if current_obj:
-                description = current_obj["description"]
+        heading = re.match(r"^(#{2,})\s+(.*?)\s*$", line)
+        if heading and current_obj and not starts_definition(*heading.groups()):
+            # A descriptive subsection of the object we are already in. Fold it
+            # into the description so the properties below it keep landing on
+            # the enclosing object.
+            heading = None
 
-                yield {
-                    "title": current_obj["title"],
-                    "description": description,
-                    "markdownDescription": description,
-                    "properties": {x["name"]: x for x in current_obj["raw_properties"]},
-                    # turn off additionalProperties so that monaco will warn on
-                    # unknown properties. xray does allow for unknown
-                    # properties but most likely, setting them is a mistake. we
-                    # only do this if we have any props ourselves, otherwise
-                    # there is no point.
-                    "additionalProperties": not current_obj["raw_properties"],
-                }
+        if heading:
+            if current_obj:
+                yield finalize(current_obj)
 
             current_obj = {
-                "title": line.split(" ", 1)[-1].strip(),
+                "title": heading.group(2),
                 "description": "",
                 "raw_properties": [],
             }
@@ -99,6 +138,7 @@ def parse(stdin: Iterator[str]) -> Iterator[JsonschemaType]:
                 continue
 
             name = name.strip(" `")
+            name = PROPERTY_RENAMES.get(current_obj["title"], {}).get(name, name)
 
             try:
                 type_info = parse_type(ty)
@@ -129,6 +169,11 @@ def parse(stdin: Iterator[str]) -> Iterator[JsonschemaType]:
                 current_obj["raw_properties"][-1]["markdownDescription"] += line
             else:
                 current_obj["description"] += line
+
+    # Whatever section the input ended on still has to be emitted, otherwise the
+    # last definition in the stream is silently dropped.
+    if current_obj:
+        yield finalize(current_obj)
 
 
 def parse_type(input: str) -> dict:

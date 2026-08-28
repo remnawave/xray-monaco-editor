@@ -60,7 +60,7 @@ func main() {
 		}
 
 		replaceKeyFileAndCertificateFile(configObj)
-		removeExtDatRules(configObj)
+		configObj = removeUnloadableGeoDataRules(configObj, "config")
 
 		modifiedConfigBytes, err := json.Marshal(configObj)
 		if err != nil {
@@ -165,73 +165,89 @@ EncRJJEl8/Q4jzWq+/JOGQVf6ds=
 	}
 }
 
-func removeExtDatRules(obj interface{}) {
-	switch v := obj.(type) {
-	case map[string]interface{}:
-		fmt.Printf("Processing map with keys: %v\n", getKeys(v))
-		for key, value := range v {
-			switch val := value.(type) {
-			case []interface{}:
-				fmt.Printf("Processing array in key '%s' with %d elements\n", key, len(val))
-				filteredRules := make([]interface{}, 0)
-				for _, rule := range val {
-					switch r := rule.(type) {
-					case string:
-						if strings.Contains(r, "ext:") && strings.Contains(r, ".dat") {
-							fmt.Printf("Removing string rule: %s\n", r)
-							continue
-						}
-						filteredRules = append(filteredRules, r)
-					case map[string]interface{}:
-						if domains, ok := r["domain"].([]interface{}); ok {
-							fmt.Printf("Found nested domain rules with %d elements\n", len(domains))
-							filteredDomains := make([]interface{}, 0)
-							for _, domain := range domains {
-								if domainStr, ok := domain.(string); ok {
-									if strings.Contains(domainStr, "ext:") && strings.Contains(domainStr, ".dat") {
-										fmt.Printf("Removing nested rule: %s\n", domainStr)
-										continue
-									}
-									filteredDomains = append(filteredDomains, domain)
-								}
-							}
-							r["domain"] = filteredDomains
-						}
-						if ips, ok := r["ip"].([]interface{}); ok {
-							fmt.Printf("Found nested ip rules with %d elements\n", len(ips))
-							filteredIps := make([]interface{}, 0)
-							for _, ip := range ips {
-								if ipStr, ok := ip.(string); ok {
-									if strings.Contains(ipStr, "ext:") && strings.Contains(ipStr, ".dat") {
-										fmt.Printf("Removing nested ip rule: %s\n", ipStr)
-										continue
-									}
-									filteredIps = append(filteredIps, ip)
-								}
-							}
-							r["ip"] = filteredIps
-						}
-						filteredRules = append(filteredRules, r)
-					default:
-						filteredRules = append(filteredRules, rule)
-					}
-				}
-				v[key] = filteredRules
-			case map[string]interface{}:
-				removeExtDatRules(val)
-			}
-		}
-	case []interface{}:
-		for _, item := range v {
-			removeExtDatRules(item)
-		}
-	}
+// Geodata rules may point at an external .dat file through the "ext:",
+// "ext-ip:", "ext-domain:" and "ext-site:" prefixes; "geoip:" / "geosite:" are
+// rewritten to "ext:geoip.dat:" / "ext:geosite.dat:" by the parser itself (see
+// common/geodata/rule_parser.go). Every such rule is resolved eagerly at config
+// build time via checkFile -> filesystem.OpenAsset, which in the browser can
+// only serve the two .dat files embedded into this binary. Rules referencing
+// anything else are stripped before the config reaches xray-core.
+//
+// Rule lists reachable from a JSON config in xray-core v26.7.28:
+//
+//	routing.rules[].domain / .domains / .ip / .source / .sourceIP / .localIP
+//	dns.servers[].domains / .expectIPs / .expectedIPs / .unexpectedIPs
+//	dns.hosts                                   -- the rules are the map keys
+//	<any>.sniffing.domainsExcluded / .ipsExcluded
+//	    -- inbounds[].sniffing, outbounds[].settings.sniffing (loopback), and
+//	       the vless "reverse" sniffing on inbound clients / outbound users
+//	outbounds[].settings.rules[].domain         -- dns outbound
+//	outbounds[].settings.finalRules[].ip        -- freedom outbound
+//
+
+// embeddedGeoDataFiles are the assets served by the filesystem.NewFileReader
+// override installed in main().
+var embeddedGeoDataFiles = map[string]bool{
+	"geoip.dat":   true,
+	"geosite.dat": true,
 }
 
-func getKeys(m map[string]interface{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+// extRulePrefixes mirrors the prefixes accepted by geodata.ParseIPRules and
+// geodata.ParseDomainRules.
+var extRulePrefixes = [...]string{"ext:", "ext-ip:", "ext-domain:", "ext-site:"}
+
+// isUnloadableExtRule reports whether rule loads a geodata file that is not
+// available in the browser. Syntactically broken rules are kept on purpose, so
+// that xray-core reports the actual error instead of them vanishing silently.
+func isUnloadableExtRule(rule string) bool {
+	// "!" is the reverse-match prefix of IP rules and may be repeated,
+	// cf. geodata.cutReversePrefix.
+	rule = strings.TrimLeft(rule, "!")
+
+	for _, prefix := range extRulePrefixes {
+		if !strings.HasPrefix(rule, prefix) {
+			continue
+		}
+		file, code, ok := strings.Cut(rule[len(prefix):], ":")
+		if !ok || file == "" || code == "" {
+			return false
+		}
+		return !embeddedGeoDataFiles[file]
 	}
-	return keys
+
+	return false
+}
+
+// removeUnloadableGeoDataRules returns obj with every unloadable geodata rule
+// removed: array elements are dropped, and object keys are deleted (dns.hosts
+// is keyed by domain rules). Maps are mutated in place, arrays are rebuilt, so
+// the result must be used instead of obj.
+func removeUnloadableGeoDataRules(obj interface{}, path string) interface{} {
+	switch v := obj.(type) {
+	case map[string]interface{}:
+		for key, value := range v {
+			if isUnloadableExtRule(key) {
+				fmt.Printf("Removing unloadable geodata rule %q (key of %s)\n", key, path)
+				delete(v, key)
+				continue
+			}
+			v[key] = removeUnloadableGeoDataRules(value, path+"."+key)
+		}
+		return v
+
+	case []interface{}:
+		filtered := make([]interface{}, 0, len(v))
+		for i, item := range v {
+			itemPath := fmt.Sprintf("%s[%d]", path, i)
+			if rule, ok := item.(string); ok && isUnloadableExtRule(rule) {
+				fmt.Printf("Removing unloadable geodata rule %q at %s\n", rule, itemPath)
+				continue
+			}
+			filtered = append(filtered, removeUnloadableGeoDataRules(item, itemPath))
+		}
+		return filtered
+
+	default:
+		return obj
+	}
 }
